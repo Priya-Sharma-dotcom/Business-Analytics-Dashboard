@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Upload CSV - e-Infosoft{% endblock %}
+{% block content %}
+<h1>Upload Business Data (CSV)</h1>
+
+<p><em>Only .csv files allowed. Maximum file size: 2MB</em></p>
+
+<form method="POST" enctype="multipart/form-data">
+    <label>Select a CSV file:</label><br>
+    <input type="file" name="file" accept=".csv" required><br><br>
+    <input type="submit" value="Upload & Analyze" class="button">
+</form>
+
+<br>
+<a href="/"> Back to Dashboard</a>
+{% endblock %}

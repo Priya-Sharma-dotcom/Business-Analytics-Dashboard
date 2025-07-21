@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% block title %}e-Infosoft{% endblock %}</title>
+    <style>
+        :root {
+            --bg-color: #000;
+            --text-color: #fff;
+            --primary-color: #00ffff;
+            --link-color: #1E90FF;
+            --input-bg: #222;
+            --border-color: #444;
+        }
+
+        .light-mode {
+            --bg-color: #fff;
+            --text-color: #000;
+            --primary-color: #007acc;
+            --link-color: #007acc;
+            --input-bg: #f0f0f0;
+            --border-color: #ccc;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 40px;
+            transition: all 0.3s;
+        }
+
+        h1, h2, h3 {
+            color: var(--primary-color);
+        }
+
+        input, select, button {
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 8px;
+            border-radius: 5px;
+            margin-top: 5px;
+        }
+
+        a {
+            color: var(--link-color);
+            text-decoration: none;
+            margin-right: 10px;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .button {
+            background-color: var(--link-color);
+            color: var(--text-color);
+            border: none;
+            padding: 10px 16px;
+            margin-top: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .button:hover {
+            background-color: var(--primary-color);
+        }
+
+        table {
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 8px;
+        }
+
+        th {
+            background-color: var(--input-bg);
+        }
+
+        .toggle-container {
+            position: fixed;
+            top: 20px;
+            right: 30px;
+        }
+
+        .toggle-container input {
+            transform: scale(1.4);
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="toggle-container">
+        <label> Dark Mode</label>
+        <input type="checkbox" id="themeToggle" checked>
+    </div>
+
+    {% block content %}{% endblock %}
+
+    <script>
+        const toggle = document.getElementById('themeToggle');
+        toggle.addEventListener('change', () => {
+            document.body.classList.toggle('light-mode');
+        });
+    </script>
+</body>
+</html>

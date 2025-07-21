@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Register - e-Infosoft{% endblock %}
+{% block content %}
+<h1>Register for e-Infosoft</h1>
+
+<form method="POST">
+    <label>Email:</label><br>
+    <input type="email" name="email" required placeholder="Enter a valid email"><br><br>
+
+    <label>Password:</label><br>
+    <input type="password" name="password" required placeholder="Choose a strong password"><br><br>
+
+    <input type="submit" value="Register" class="button">
+</form>
+
+<p><small>Note: Use a valid email (e.g. user@example.com) and a secure password. Your account will be needed to log in.</small></p>
+
+<p>Already have an account? <a href="/login">Login here</a></p>
+{% endblock %}

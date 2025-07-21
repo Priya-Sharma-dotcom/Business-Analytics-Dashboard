@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Login - e-Infosoft{% endblock %}
+{% block content %}
+<h1> Login to e-Infosoft</h1>
+<form method="POST">
+    <label>Email:</label><br>
+    <input type="email" name="email" required><br><br>
+
+    <label>Password:</label><br>
+    <input type="password" name="password" required><br><br>
+
+    <input type="submit" value="Login" class="button">
+</form>
+
+<p>Don't have an account? <a href="/register">Register here</a></p>
+{% endblock %}
