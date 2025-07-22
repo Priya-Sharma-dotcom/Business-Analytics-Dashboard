@@ -1,70 +1,59 @@
 {% extends "base.html" %}
 {% block title %}Dashboard - e-Infosoft{% endblock %}
 {% block content %}
-<h1> e-Infosoft Business Dashboard</h1>
 
-<p><strong>Total Revenue:</strong> {{ revenue }}</p>
-<p><strong>Total Profit:</strong> {{ profit }}</p>
-<p><strong>Total Units Sold:</strong> {{ units }}</p>
+<h1>📊 e-Infosoft Business Dashboard</h1>
 
-<h2> Generate Chart</h2>
-<form action="/chart" method="post">
-    <label>Select Chart Type:</label>
-    <select name="chart_type">
-        <option value="line">Line Chart</option>
-        <option value="bar">Bar Chart</option>
-        <option value="pie">Pie Chart</option>
-    </select><br><br>
-
-    <label>Select Metric:</label>
-    <select name="metric">
-        <option value="Revenue">Revenue</option>
-        <option value="Profit">Profit</option>
-        <option value="Units_Sold">Units Sold</option>
-    </select><br><br>
-
-    <label>Select Product:</label>
-    <select name="product">
-        <option value="All">All Products</option>
-        {% for prod in products %}
-            <option value="{{ prod }}">{{ prod }}</option>
-        {% endfor %}
-    </select><br><br>
-
-    <input type="submit" value="Generate Chart" class="button">
+<!-- File Upload -->
+<form method="POST" enctype="multipart/form-data">
+    <label>Upload CSV File:</label>
+    <input type="file" name="file" required>
+    <button type="submit" class="button">Upload & Analyze</button>
 </form>
+<hr>
 
-{% if chart_path %}
-    <h3>Generated Charts:</h3>
-    {% for chart in chart_path %}
-        <img src="/static/{{ chart }}" width="600"><br><br>
-    {% endfor %}
+{% if chart %}
+    <h2>📈 Monthly Revenue Chart</h2>
+    <img src="data:image/png;base64,{{ chart }}" width="700">
 {% endif %}
 
-{% if summary_table %}
-    <h2> Summary Table</h2>
+{% if kpi %}
+    <h2>📌 Key Performance Indicators (KPIs)</h2>
+    <ul>
+        <li><strong>Total Revenue:</strong> ₹{{ kpi['Total Revenue'] }}</li>
+        <li><strong>Total Profit:</strong> ₹{{ kpi['Total Profit'] }}</li>
+        <li><strong>Average Monthly Sales:</strong> ₹{{ kpi['Avg Monthly Sales'] }}</li>
+        <li><strong>Top Product:</strong> {{ kpi['Top Product'] }}</li>
+    </ul>
+{% endif %}
+
+{% if segment_data %}
+    <h2>👥 Customer Segmentation</h2>
     <table>
+        <tr><th>Customer</th><th>Revenue</th><th>Segment</th></tr>
+        {% for row in segment_data.iterrows() %}
         <tr>
-            <th>Month</th>
-            <th>Product</th>
-            <th>Units Sold</th>
-            <th>Revenue</th>
-            <th>Profit</th>
-        </tr>
-        {% for row in summary_table %}
-        <tr>
-            <td>{{ row.Month }}</td>
-            <td>{{ row.Product }}</td>
-            <td>{{ row.Units_Sold }}</td>
-            <td>{{ row.Revenue }}</td>
-            <td>{{ row.Profit }}</td>
+            <td>{{ row[1]['Customer'] }}</td>
+            <td>{{ row[1]['Revenue'] }}</td>
+            <td>{{ row[1]['Segment'] }}</td>
         </tr>
         {% endfor %}
     </table>
 {% endif %}
 
-<hr>
-<a href="/upload"> Upload New CSV</a>
-<a href="/download"> Download Report</a>
-<a href="/logout"> Logout</a>
+{% if inventory_data %}
+    <h2>📦 Inventory Optimization</h2>
+    <table>
+        <tr><th>Product</th><th>Total Sold</th><th>Status</th></tr>
+        {% for row in inventory_data.iterrows() %}
+        <tr>
+            <td>{{ row[1]['Product'] }}</td>
+            <td>{{ row[1]['Quantity Sold'] }}</td>
+            <td>{{ row[1]['Status'] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+{% endif %}
+
 {% endblock %}
+
