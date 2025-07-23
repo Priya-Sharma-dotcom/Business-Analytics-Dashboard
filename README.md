@@ -1,119 +1,110 @@
-# 📊 Business Analytics Dashboard - e-Infosoft
+# e-Infosoft Business Analytics Dashboard
 
-A secure, user-friendly business analytics dashboard designed for **e-Infosoft**, an electronics showroom. This Flask-based web application allows users to:
-
-✅ Register and log in
-📁 Upload business CSV files
-📈 Generate dynamic charts (Line, Bar, Pie)
-📄 Download a PDF business report with visual charts and table summaries
-🌙 Toggle between dark and light modes
+**e-Infosoft** is a comprehensive business analytics dashboard designed to empower electronics showrooms and similar businesses with deep insights from their sales data. This tool supports CSV file upload, generates insightful visualizations (bar, line, and pie charts), predicts future trends, performs customer segmentation, and optimizes inventory levels.
 
 ---
 
-## 🔧 Features
+## 🚀 Features
 
-* **User Authentication**: Registration & Login
-* **CSV Upload**: Upload your sales or inventory data securely
-* **Chart Generation**: Select metric & chart type dynamically
-* **Summary Table**: Auto-generated table from your uploaded CSV
-* **PDF Export**: Create a downloadable business report with charts & summary
-* **Dark Mode**: Toggle theme for better visibility
-* **Responsive Design**: Clean layout styled using HTML/CSS
+* **Secure Login & Registration System**
+* **CSV Upload and Persistent Session Memory**
+* **Interactive Dashboards**
+
+  * Bar Chart: Revenue/Profit by Product
+  * Line Chart: Time-based Revenue Trends
+  * Pie Chart: Revenue Share by Category
+* **Forecasting with Linear Regression**
+* **Customer Segmentation using KMeans Clustering**
+* **Inventory Optimization Suggestions**
+* **PDF Report Generation**
+* **Background Video Support**
 
 ---
 
-## 📁 Project Structure
+## 🔧 Technologies Used
+
+* **Frontend:** HTML, CSS, JavaScript (with Chart.js)
+* **Backend:** Python (Flask)
+* **Data Science:** Pandas, NumPy, Scikit-learn, Matplotlib, Seaborn
+* **Deployment:** Railway, Render
+
+---
+
+## 📂 Folder Structure
 
 ```
-BusinessAnalyticsSite/
-├── app.py
-├── data/                  # Uploaded CSV files (optional to keep empty)
-├── reports/               # Auto-generated business reports (PDF)
-├── static/                # Stores generated chart images
-├── templates/             # HTML files (login, register, dashboard, etc.)
+e-infosoft/
+├── app.py                  # Main Flask backend
+├── templates/              # HTML templates (Jinja2)
 │   ├── base.html
 │   ├── index.html
 │   ├── login.html
 │   ├── register.html
-│   └── upload.html
-├── users.json             # Stores registered users' data
-├── requirements.txt
-└── README.md
+│   ├── upload.html
+│   ├── dashboard.html
+│   ├── forecast.html
+│   └── segment.html
+├── static/                 # CSS, JS, video
+│   └── background.mp4
+├── data/                   # Uploaded CSV files
+├── reports/                # Generated PDF reports
+├── users.json              # User credentials (hashed)
+├── requirements.txt        # Python dependencies
+├── runtime.txt             # Python version
+├── Procfile                # For Railway deployment
+├── render.yaml             # For Render deployment
+└── README.md               # This file
 ```
 
 ---
 
-## 🚀 How to Run Locally
+## 📊 Sample CSV Columns
 
-### 1. Clone the Repository
+Your CSV file should include the following columns:
 
-```bash
-git clone https://github.com/Priya-Sharma-dotcom/Business-Analytics-Dashboard.git
-cd Business-Analytics-Dashboard
+```
+Date, Product, Category, Units Sold, Revenue, Cost, Customer Name, Customer Email, Location, Customer Type, Stock Level
 ```
 
-### 2. Create Virtual Environment
+---
+
+## 🔄 How Forecasting Works
+
+Forecasting is done using **Linear Regression** to predict revenue trends based on date. It maps each date to a numerical index and predicts future values using the fitted regression line.
+
+---
+
+## � Customer Segmentation
+
+Uses **KMeans clustering** on normalized Revenue, Units Sold, and Stock Level to identify different customer segments.
+
+---
+
+## 📥 Installation
 
 ```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-### 3. Install Dependencies
-
-```bash
+git clone https://github.com/your-username/e-infosoft.git
+cd e-infosoft
 pip install -r requirements.txt
-```
-
-### 4. Run the App
-
-```bash
 python app.py
 ```
 
-Visit `http://127.0.0.1:5000` in your browser.
+---
+
+## ⚖️ License
+
+MIT License
 
 ---
 
-## 📊 Sample CSV Format
+## 🌐 Live Demo
 
-| Month   | Product | Units\_Sold | Revenue | Profit |
-| ------- | ------- | ----------- | ------- | ------ |
-| January | Fridge  | 20          | 100000  | 15000  |
-| January | TV      | 10          | 70000   | 12000  |
+[https://web-production-451ec.up.railway.app](https://web-production-451ec.up.railway.app)
 
 ---
 
-## 💡 Future Enhancements
+## 👨‍💼 Author
 
-* Email-based password reset
-* Chart downloads individually
-* Admin dashboard
-* Support for Excel (.xlsx) uploads
-
----
-
-## 🧠 Built With
-
-* Python 3
-* Flask
-* Pandas
-* Matplotlib
-* FPDF
-* HTML/CSS
-
----
-
-## 🏢 About e-Infosoft
-
-This project was built as part of the **e-Infosoft** initiative to analyze sales data for electronics showrooms.
-🔗 Powered by: `e-Infosoft`
-
----
-
-## 📬 Contact
-
-👤 Priya Sharma
-📧 [priya.sharma01312@gmail.com](mailto:priya.sharma01312@gmail.com)
-🔗 [LinkedIn](https://www.linkedin.com/in/priya-sharma-blockchain/)
-🌐 [GitHub](https://github.com/Priya-Sharma-dotcom)
+**Priya Sharma**
+[LinkedIn Profile]https://www.linkedin.com/in/priya-sharma-blockchain/
+*Powered by e-Infosoft*
