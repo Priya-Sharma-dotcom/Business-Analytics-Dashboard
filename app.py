@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, flash
 import os
 import pandas as pd
 import numpy as np
@@ -8,150 +8,155 @@ from sklearn.cluster import KMeans
 from fpdf import FPDF
 from io import BytesIO
 import base64
+from datetime import timedelta
 
 app = Flask(__name__)
-app.secret_key = 'e-infosoft-secret-key'
+app.secret_key = 'your_secret_key'
+app.permanent_session_lifetime = timedelta(minutes=30)
+
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# Dummy user database
-users = {'admin@example.com': 'admin123'}
-
-data_cache = {}
+def load_users():
+    return {"admin@example.com": "admin123"}
 
 @app.route('/')
 def index():
-    if 'email' not in session:
+    return render_template('login.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        flash('Registration currently disabled in this demo.')
         return redirect(url_for('login'))
-    return render_template('index.html')
+    return render_template('register.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         email = request.form['email']
         password = request.form['password']
+        users = load_users()
         if email in users and users[email] == password:
-            session['email'] = email
-            return redirect(url_for('index'))
-        else:
-            return render_template('login.html', error="Invalid email or password.")
-    return render_template('login.html')
-
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    if request.method == 'POST':
-        email = request.form['email']
-        password = request.form['password']
-        users[email] = password
-        return redirect(url_for('login'))
-    return render_template('register.html')
-
-@app.route('/logout')
-def logout():
-    session.pop('email', None)
-    return redirect(url_for('login'))
-
-@app.route('/upload', methods=['GET', 'POST'])
-def upload():
-    if 'email' not in session:
-        return redirect(url_for('login'))
-
-    if request.method == 'POST':
-        file = request.files['file']
-        if file and file.filename.endswith('.csv'):
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-            file.save(filepath)
-            df = pd.read_csv(filepath)
-            session['uploaded_file'] = filepath
-            data_cache[session['email']] = df
+            session.permanent = True
+            session['user'] = email
             return redirect(url_for('dashboard'))
-    return render_template('upload.html')
+        else:
+            flash('Invalid credentials.')
+            return redirect(url_for('login'))
+    return render_template('login.html')
 
 @app.route('/dashboard')
 def dashboard():
-    if 'email' not in session or 'uploaded_file' not in session:
+    if 'user' not in session:
+        return redirect(url_for('login'))
+    return render_template('dashboard.html')
+
+@app.route('/upload', methods=['GET', 'POST'])
+def upload():
+    if 'user' not in session:
+        return redirect(url_for('login'))
+    if request.method == 'POST':
+        file = request.files['csvfile']
+        if file:
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+            file.save(filepath)
+            session['csv_path'] = filepath
+            return redirect(url_for('analysis'))
+    return render_template('upload.html')
+
+@app.route('/analysis')
+def analysis():
+    if 'user' not in session or 'csv_path' not in session:
         return redirect(url_for('login'))
 
-    df = data_cache.get(session['email'])
-    if df is None:
-        return redirect(url_for('upload'))
+    df = pd.read_csv(session['csv_path'])
 
-    summary = df[['Revenue', 'Profit', 'Units Sold']].sum().to_dict()
-    product_summary = df.groupby('Product')[['Revenue', 'Profit', 'Units Sold']].sum()
+    charts = []
 
-    # Plot
-    plt.figure(figsize=(10, 6))
-    product_summary[['Revenue', 'Profit']].plot(kind='bar')
-    plt.title('Revenue and Profit by Product')
-    plt.tight_layout()
-    bar_chart = save_plot_to_base64()
+    product_types = ['Fridge', 'TV', 'AC', 'Laptop']
+    metrics = ['Revenue', 'Profit', 'Units Sold']
 
-    plt.figure(figsize=(6, 6))
-    product_summary['Units Sold'].plot(kind='pie', autopct='%1.1f%%')
-    plt.title('Units Sold by Product')
-    plt.ylabel('')
-    pie_chart = save_plot_to_base64()
+    for metric in metrics:
+        for product in product_types:
+            product_df = df[df['Product'] == product]
+            if product_df.empty or metric not in product_df.columns:
+                continue
 
-    return render_template('dashboard.html', summary=summary, bar_chart=bar_chart, pie_chart=pie_chart)
+            # Bar chart
+            plt.figure(figsize=(6,4))
+            sns.barplot(x=product_df['Month'], y=product_df[metric])
+            plt.title(f'{metric} for {product} (Bar)')
+            plt.tight_layout()
+            bar_io = BytesIO()
+            plt.savefig(bar_io, format='png')
+            bar_io.seek(0)
+            bar_base64 = base64.b64encode(bar_io.read()).decode('utf-8')
+            charts.append(('Bar', product, metric, bar_base64))
+            plt.close()
+
+            # Line chart
+            plt.figure(figsize=(6,4))
+            sns.lineplot(x=product_df['Month'], y=product_df[metric])
+            plt.title(f'{metric} for {product} (Line)')
+            plt.tight_layout()
+            line_io = BytesIO()
+            plt.savefig(line_io, format='png')
+            line_io.seek(0)
+            line_base64 = base64.b64encode(line_io.read()).decode('utf-8')
+            charts.append(('Line', product, metric, line_base64))
+            plt.close()
+
+            # Pie chart (total value)
+            plt.figure(figsize=(4,4))
+            total = product_df.groupby('Product')[metric].sum()
+            plt.pie(total, labels=total.index, autopct='%1.1f%%')
+            plt.title(f'{metric} Distribution for {product} (Pie)')
+            pie_io = BytesIO()
+            plt.savefig(pie_io, format='png')
+            pie_io.seek(0)
+            pie_base64 = base64.b64encode(pie_io.read()).decode('utf-8')
+            charts.append(('Pie', product, metric, pie_base64))
+            plt.close()
+
+    return render_template('analysis.html', charts=charts)
 
 @app.route('/forecast')
 def forecast():
-    if 'email' not in session or 'uploaded_file' not in session:
+    if 'user' not in session or 'csv_path' not in session:
         return redirect(url_for('login'))
 
-    df = data_cache.get(session['email'])
-    if df is None or 'Date' not in df.columns:
-        return redirect(url_for('upload'))
+    df = pd.read_csv(session['csv_path'])
 
-    df['Date'] = pd.to_datetime(df['Date'])
-    df.sort_values('Date', inplace=True)
-    df.set_index('Date', inplace=True)
-    monthly_revenue = df['Revenue'].resample('M').sum()
+    forecast_data = {}
+    for product in df['Product'].unique():
+        prod_df = df[df['Product'] == product]
+        if len(prod_df) < 2:
+            continue
+        prod_df = prod_df.sort_values('Month')
+        prod_df['Revenue_forecast'] = prod_df['Revenue'].rolling(2).mean().fillna(method='bfill')
+        forecast_data[product] = prod_df[['Month', 'Revenue', 'Revenue_forecast']]
 
-    from statsmodels.tsa.holtwinters import ExponentialSmoothing
-    model = ExponentialSmoothing(monthly_revenue, trend='add', seasonal='add', seasonal_periods=12)
-    fit = model.fit()
-    forecasted = fit.forecast(6)
-
-    plt.figure(figsize=(10, 6))
-    monthly_revenue.plot(label='Actual')
-    forecasted.plot(label='Forecast')
-    plt.legend()
-    plt.title('Revenue Forecast')
-    plt.tight_layout()
-    line_chart = save_plot_to_base64()
-
-    return render_template('forecast.html', line_chart=line_chart)
+    return render_template('forecast.html', forecast_data=forecast_data)
 
 @app.route('/segment')
 def segment():
-    if 'email' not in session or 'uploaded_file' not in session:
+    if 'user' not in session or 'csv_path' not in session:
         return redirect(url_for('login'))
 
-    df = data_cache.get(session['email'])
-    if df is None:
-        return redirect(url_for('upload'))
+    df = pd.read_csv(session['csv_path'])
 
-    customer_data = df.groupby('Customer')[['Revenue', 'Units Sold']].sum().dropna()
-    kmeans = KMeans(n_clusters=3, random_state=0)
-    customer_data['Cluster'] = kmeans.fit_predict(customer_data)
+    try:
+        features = df[['Units Sold', 'Revenue', 'Profit']]
+        model = KMeans(n_clusters=3)
+        df['Segment'] = model.fit_predict(features)
+    except:
+        df['Segment'] = 'N/A'
 
-    plt.figure(figsize=(8, 6))
-    sns.scatterplot(x='Revenue', y='Units Sold', hue='Cluster', data=customer_data, palette='Set1')
-    plt.title('Customer Segments')
-    plt.tight_layout()
-    segment_chart = save_plot_to_base64()
+    return render_template('segment.html', table=df.to_html(classes='table table-striped'))
 
-    return render_template('segment.html', segment_chart=segment_chart)
-
-def save_plot_to_base64():
-    buf = BytesIO()
-    plt.savefig(buf, format='png')
-    plt.close()
-    buf.seek(0)
-    image_base64 = base64.b64encode(buf.read()).decode('utf-8')
-    return image_base64
-
-if __name__ == '__main__':
-    app.run(debug=True)
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
