@@ -1,7 +1,15 @@
 {% extends "base.html" %}
-{% block title %}Forecasting - e-Infosoft{% endblock %}
+{% block title %}Sales Forecast - e-Infosoft{% endblock %}
 {% block content %}
-<h1>Sales Forecasting</h1>
-<p>Coming soon: Predict future sales using AI forecasting techniques.</p>
+<h1>📈 Sales Forecast</h1>
+<p>This chart shows the revenue trend and future forecast based on uploaded data.</p>
+
+{% if forecast_plot %}
+    <img src="data:image/png;base64,{{ forecast_plot }}" alt="Revenue Forecast" class="img-fluid rounded shadow">
+{% else %}
+    <p>No data available to forecast.</p>
+{% endif %}
+
 <a href="{{ url_for('dashboard') }}">⬅ Back to Dashboard</a>
 {% endblock %}
+
