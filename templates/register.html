@@ -3,7 +3,7 @@
 {% block content %}
 <h1>Register for e-Infosoft</h1>
 
-<form method="POST">
+<form method="POST" action="{{ url_for('register') }}">
     <label>Email:</label><br>
     <input type="email" name="email" required placeholder="Enter a valid email"><br><br>
 
