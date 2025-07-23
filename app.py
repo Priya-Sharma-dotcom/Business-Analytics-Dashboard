@@ -52,13 +52,51 @@ def dashboard():
     if 'username' not in session:
         return redirect(url_for('login'))
 
+    charts = []
+
     if request.method == 'POST':
         file = request.files['csv_file']
-        if file.filename.endswith('.csv'):
+        if file and file.filename.endswith('.csv'):
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
             file.save(filepath)
             session['csv_file'] = filepath
-            return render_template('dashboard.html', uploaded=True)
+
+            df = pd.read_csv(filepath)
+
+            # Add profit column if not present
+            if 'Profit' not in df.columns and 'Revenue' in df.columns and 'Cost' in df.columns:
+                df['Profit'] = df['Revenue'] - df['Cost']
+
+            chart_type = request.form['chart_type']
+            metric = request.form['metric']
+
+            # Generate chart per product
+            if 'Product' in df.columns and metric in df.columns:
+                grouped = df.groupby('Product')[metric].sum().reset_index()
+
+                for _, row in grouped.iterrows():
+                    fig, ax = plt.subplots()
+                    product = row['Product']
+                    value = row[metric]
+
+                    if chart_type == 'bar':
+                        ax.bar(product, value)
+                    elif chart_type == 'line':
+                        ax.plot([product], [value], marker='o')
+                    elif chart_type == 'pie':
+                        ax.pie([value, grouped[metric].sum() - value], labels=[product, 'Others'])
+
+                    ax.set_title(f'{product} - {metric}')
+                    buf = io.BytesIO()
+                    plt.savefig(buf, format='png')
+                    buf.seek(0)
+                    chart_url = base64.b64encode(buf.getvalue()).decode('utf-8')
+                    plt.close(fig)
+
+                    charts.append((chart_type, product, metric, chart_url))
+
+            return render_template('dashboard.html', charts=charts)
+
     return render_template('dashboard.html')
 
 
