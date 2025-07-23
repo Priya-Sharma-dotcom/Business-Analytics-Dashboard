@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session
 import os
 import pandas as pd
 import numpy as np
@@ -8,155 +8,115 @@ from sklearn.cluster import KMeans
 from fpdf import FPDF
 from io import BytesIO
 import base64
-from datetime import timedelta
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'
-app.permanent_session_lifetime = timedelta(minutes=30)
-
+app.secret_key = 'supersecretkey'
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-def load_users():
-    return {"admin@example.com": "admin123"}
+# Dummy credentials
+users = {'admin': 'admin123'}
+
+def generate_charts(df, chart_type, metric):
+    chart_images = []
+    products = ['TV', 'Fridge', 'AC', 'Laptop']
+    for product in products:
+        subset = df[df['Product'] == product]
+        if subset.empty:
+            continue
+
+        plt.figure(figsize=(6,4))
+        if chart_type == 'bar':
+            plt.bar(subset['Month'], subset[metric])
+        elif chart_type == 'line':
+            plt.plot(subset['Month'], subset[metric], marker='o')
+        elif chart_type == 'pie':
+            subset = subset.groupby('Month')[metric].sum()
+            plt.pie(subset, labels=subset.index, autopct='%1.1f%%')
+            plt.title(f'{metric} for {product}')
+            img = BytesIO()
+            plt.savefig(img, format='png')
+            img.seek(0)
+            chart_url = base64.b64encode(img.getvalue()).decode()
+            chart_images.append((chart_type, product, metric, chart_url))
+            plt.close()
+            continue
+
+        plt.title(f'{metric} for {product}')
+        plt.xlabel('Month')
+        plt.ylabel(metric)
+        plt.tight_layout()
+        img = BytesIO()
+        plt.savefig(img, format='png')
+        img.seek(0)
+        chart_url = base64.b64encode(img.getvalue()).decode()
+        chart_images.append((chart_type, product, metric, chart_url))
+        plt.close()
+    return chart_images
 
 @app.route('/')
 def index():
-    return render_template('login.html')
+    return render_template('index.html')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        flash('Registration currently disabled in this demo.')
+        username = request.form['username']
+        password = request.form['password']
+        if username in users:
+            return 'Username already exists.'
+        users[username] = password
         return redirect(url_for('login'))
     return render_template('register.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        email = request.form['email']
+        username = request.form['username']
         password = request.form['password']
-        users = load_users()
-        if email in users and users[email] == password:
-            session.permanent = True
-            session['user'] = email
+        if username in users and users[username] == password:
+            session['username'] = username
             return redirect(url_for('dashboard'))
         else:
-            flash('Invalid credentials.')
-            return redirect(url_for('login'))
+            return 'Invalid credentials'
     return render_template('login.html')
-
-@app.route('/dashboard')
-def dashboard():
-    if 'user' not in session:
-        return redirect(url_for('login'))
-    return render_template('dashboard.html')
-
-@app.route('/upload', methods=['GET', 'POST'])
-def upload():
-    if 'user' not in session:
-        return redirect(url_for('login'))
-    if request.method == 'POST':
-        file = request.files['csvfile']
-        if file:
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-            file.save(filepath)
-            session['csv_path'] = filepath
-            return redirect(url_for('analysis'))
-    return render_template('upload.html')
-
-@app.route('/analysis')
-def analysis():
-    if 'user' not in session or 'csv_path' not in session:
-        return redirect(url_for('login'))
-
-    df = pd.read_csv(session['csv_path'])
-
-    charts = []
-
-    product_types = ['Fridge', 'TV', 'AC', 'Laptop']
-    metrics = ['Revenue', 'Profit', 'Units Sold']
-
-    for metric in metrics:
-        for product in product_types:
-            product_df = df[df['Product'] == product]
-            if product_df.empty or metric not in product_df.columns:
-                continue
-
-            # Bar chart
-            plt.figure(figsize=(6,4))
-            sns.barplot(x=product_df['Month'], y=product_df[metric])
-            plt.title(f'{metric} for {product} (Bar)')
-            plt.tight_layout()
-            bar_io = BytesIO()
-            plt.savefig(bar_io, format='png')
-            bar_io.seek(0)
-            bar_base64 = base64.b64encode(bar_io.read()).decode('utf-8')
-            charts.append(('Bar', product, metric, bar_base64))
-            plt.close()
-
-            # Line chart
-            plt.figure(figsize=(6,4))
-            sns.lineplot(x=product_df['Month'], y=product_df[metric])
-            plt.title(f'{metric} for {product} (Line)')
-            plt.tight_layout()
-            line_io = BytesIO()
-            plt.savefig(line_io, format='png')
-            line_io.seek(0)
-            line_base64 = base64.b64encode(line_io.read()).decode('utf-8')
-            charts.append(('Line', product, metric, line_base64))
-            plt.close()
-
-            # Pie chart (total value)
-            plt.figure(figsize=(4,4))
-            total = product_df.groupby('Product')[metric].sum()
-            plt.pie(total, labels=total.index, autopct='%1.1f%%')
-            plt.title(f'{metric} Distribution for {product} (Pie)')
-            pie_io = BytesIO()
-            plt.savefig(pie_io, format='png')
-            pie_io.seek(0)
-            pie_base64 = base64.b64encode(pie_io.read()).decode('utf-8')
-            charts.append(('Pie', product, metric, pie_base64))
-            plt.close()
-
-    return render_template('analysis.html', charts=charts)
-
-@app.route('/forecast')
-def forecast():
-    if 'user' not in session or 'csv_path' not in session:
-        return redirect(url_for('login'))
-
-    df = pd.read_csv(session['csv_path'])
-
-    forecast_data = {}
-    for product in df['Product'].unique():
-        prod_df = df[df['Product'] == product]
-        if len(prod_df) < 2:
-            continue
-        prod_df = prod_df.sort_values('Month')
-        prod_df['Revenue_forecast'] = prod_df['Revenue'].rolling(2).mean().fillna(method='bfill')
-        forecast_data[product] = prod_df[['Month', 'Revenue', 'Revenue_forecast']]
-
-    return render_template('forecast.html', forecast_data=forecast_data)
-
-@app.route('/segment')
-def segment():
-    if 'user' not in session or 'csv_path' not in session:
-        return redirect(url_for('login'))
-
-    df = pd.read_csv(session['csv_path'])
-
-    try:
-        features = df[['Units Sold', 'Revenue', 'Profit']]
-        model = KMeans(n_clusters=3)
-        df['Segment'] = model.fit_predict(features)
-    except:
-        df['Segment'] = 'N/A'
-
-    return render_template('segment.html', table=df.to_html(classes='table table-striped'))
 
 @app.route('/logout')
 def logout():
-    session.clear()
-    return redirect(url_for('login'))
+    session.pop('username', None)
+    return redirect(url_for('index'))
+
+@app.route('/dashboard', methods=['GET', 'POST'])
+def dashboard():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+
+    charts = None
+    if request.method == 'POST':
+        file = request.files['csv_file']
+        chart_type = request.form['chart_type']
+        metric = request.form['metric']
+        if file:
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+            file.save(filepath)
+            df = pd.read_csv(filepath)
+            session['last_csv'] = filepath
+            charts = generate_charts(df, chart_type, metric)
+
+    return render_template('dashboard.html', charts=charts)
+
+@app.route('/forecast')
+def forecast():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    return render_template('forecast.html')
+
+@app.route('/segment')
+def segment():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    return render_template('segment.html')
+
+if __name__ == '__main__':
+    app.run(debug=True)
