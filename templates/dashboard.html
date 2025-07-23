@@ -3,6 +3,17 @@
 {% block content %}
 <h1>Welcome, {{ session['username'] }}!</h1>
 
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="flash {{ category }}">
+        {{ message }}
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+
 {% if session['csv_data'] is defined %}
     <p>✅ Using previously uploaded CSV</p>
     <form method="POST">
