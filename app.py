@@ -7,6 +7,9 @@ import numpy as np
 from fpdf import FPDF
 from sklearn.cluster import KMeans
 from datetime import datetime
+import io
+import base64
+import time
 
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'
@@ -57,20 +60,21 @@ def dashboard():
     if request.method == 'POST':
         file = request.files['csv_file']
         if file and file.filename.endswith('.csv'):
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+            import time
+            filename = f"{int(time.time())}_{file.filename}"
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(filepath)
             session['csv_file'] = filepath
 
             df = pd.read_csv(filepath)
 
-            # Add profit column if not present
+            # Add Profit if missing
             if 'Profit' not in df.columns and 'Revenue' in df.columns and 'Cost' in df.columns:
                 df['Profit'] = df['Revenue'] - df['Cost']
 
             chart_type = request.form['chart_type']
             metric = request.form['metric']
 
-            # Generate chart per product
             if 'Product' in df.columns and metric in df.columns:
                 grouped = df.groupby('Product')[metric].sum().reset_index()
 
@@ -80,7 +84,7 @@ def dashboard():
                     value = row[metric]
 
                     if chart_type == 'bar':
-                        ax.bar(product, value)
+                        ax.bar([product], [value])
                     elif chart_type == 'line':
                         ax.plot([product], [value], marker='o')
                     elif chart_type == 'pie':
@@ -90,7 +94,7 @@ def dashboard():
                     buf = io.BytesIO()
                     plt.savefig(buf, format='png')
                     buf.seek(0)
-                    chart_url = base64.b64encode(buf.getvalue()).decode('utf-8')
+                    chart_url = base64.b64encode(buf.read()).decode('utf-8')
                     plt.close(fig)
 
                     charts.append((chart_type, product, metric, chart_url))
@@ -98,6 +102,7 @@ def dashboard():
             return render_template('dashboard.html', charts=charts)
 
     return render_template('dashboard.html')
+
 
 
 @app.route('/forecast')
