@@ -3,13 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <title>{% block title %}e-Infosoft{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    
+    <!-- Internal CSS -->
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            height: 100%;
+            overflow-x: hidden;
+        }
+
+        #bg-video {
+            position: fixed;
+            right: 0;
+            bottom: 0;
+            min-width: 100%;
+            min-height: 100%;
+            z-index: -1;
+        }
+
+        .overlay {
+            position: relative;
+            z-index: 1;
+            color: white;
+            padding: 20px;
+            background-color: rgba(0, 0, 0, 0.5); /* slightly dark background for readability */
+            min-height: 100vh;
+        }
+
+        nav {
+            display: flex;
+            gap: 15px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 10px;
+        }
+
+        nav a {
+            color: #fff;
+            text-decoration: none;
+            font-weight: bold;
+            transition: color 0.3s;
+        }
+
+        nav a:hover {
+            color: #00ffff;
+        }
+
+        main {
+            margin-top: 30px;
+        }
+    </style>
 </head>
 <body>
+    <!-- Background Video -->
     <video autoplay muted loop id="bg-video">
         <source src="{{ url_for('static', filename='video.mp4') }}" type="video/mp4">
     </video>
 
+    <!-- Overlay Content -->
     <div class="overlay">
         <nav>
             <a href="{{ url_for('index') }}">Home</a>
@@ -23,6 +76,7 @@
                 <a href="{{ url_for('register') }}">Register</a>
             {% endif %}
         </nav>
+        
         <main>
             {% block content %}{% endblock %}
         </main>
