@@ -1,59 +1,12 @@
 {% extends "base.html" %}
-{% block title %}Dashboard - e-Infosoft{% endblock %}
+{% block title %}e-Infosoft - Home{% endblock %}
 {% block content %}
-
-<h1>📊 e-Infosoft Business Dashboard</h1>
-
-<!-- File Upload -->
-<form method="POST" enctype="multipart/form-data">
-    <label>Upload CSV File:</label>
-    <input type="file" name="file" required>
-    <button type="submit" class="button">Upload & Analyze</button>
-</form>
-<hr>
-
-{% if chart %}
-    <h2>📈 Monthly Revenue Chart</h2>
-    <img src="data:image/png;base64,{{ chart }}" width="700">
+<h1>Welcome to e-Infosoft</h1>
+{% if 'email' in session %}
+    <p>Hello, {{ session['email'] }}!</p>
+    <a href="/dashboard">Go to Dashboard</a><br>
+    <a href="/logout">Logout</a>
+{% else %}
+    <a href="/login">Login</a> or <a href="/register">Register</a>
 {% endif %}
-
-{% if kpi %}
-    <h2>📌 Key Performance Indicators (KPIs)</h2>
-    <ul>
-        <li><strong>Total Revenue:</strong> ₹{{ kpi['Total Revenue'] }}</li>
-        <li><strong>Total Profit:</strong> ₹{{ kpi['Total Profit'] }}</li>
-        <li><strong>Average Monthly Sales:</strong> ₹{{ kpi['Avg Monthly Sales'] }}</li>
-        <li><strong>Top Product:</strong> {{ kpi['Top Product'] }}</li>
-    </ul>
-{% endif %}
-
-{% if segment_data %}
-    <h2>👥 Customer Segmentation</h2>
-    <table>
-        <tr><th>Customer</th><th>Revenue</th><th>Segment</th></tr>
-        {% for row in segment_data.iterrows() %}
-        <tr>
-            <td>{{ row[1]['Customer'] }}</td>
-            <td>{{ row[1]['Revenue'] }}</td>
-            <td>{{ row[1]['Segment'] }}</td>
-        </tr>
-        {% endfor %}
-    </table>
-{% endif %}
-
-{% if inventory_data %}
-    <h2>📦 Inventory Optimization</h2>
-    <table>
-        <tr><th>Product</th><th>Total Sold</th><th>Status</th></tr>
-        {% for row in inventory_data.iterrows() %}
-        <tr>
-            <td>{{ row[1]['Product'] }}</td>
-            <td>{{ row[1]['Quantity Sold'] }}</td>
-            <td>{{ row[1]['Status'] }}</td>
-        </tr>
-        {% endfor %}
-    </table>
-{% endif %}
-
 {% endblock %}
-
