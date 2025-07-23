@@ -52,46 +52,74 @@ def logout():
 
 @app.route('/dashboard', methods=['GET', 'POST'])
 def dashboard():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+
     charts = []
 
-    if 'csv_data' not in session and request.method == 'GET':
-        return render_template('dashboard.html', charts=None)
+    # If file is uploaded
+    if request.method == 'POST' and 'csv_file' in request.files:
+        file = request.files['csv_file']
+        if file and file.filename.endswith('.csv'):
+            import time
+            filename = f"{int(time.time())}_{file.filename}"
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)
+            session['csv_file'] = filepath  # Save in session
 
-    if request.method == 'POST':
-        if 'csv_file' in request.files:
-            file = request.files['csv_file']
-            df = pd.read_csv(file)
-            session['csv_data'] = df.to_json()  # Store JSON string in session
-        elif 'csv_data' in session:
-            df = pd.read_json(session['csv_data'])
-        else:
-            return redirect(url_for('dashboard'))
+    # If user submits chart type and metric (even without new file)
+    if request.method == 'POST' and 'chart_type' in request.form and 'metric' in request.form:
+        # Load CSV from session
+        if 'csv_file' not in session:
+            flash("Please upload a CSV file first.")
+            return render_template('dashboard.html')
+
+        filepath = session['csv_file']
+        df = pd.read_csv(filepath)
+
+        # Add Profit if missing
+        if 'Profit' not in df.columns and 'Revenue' in df.columns and 'Cost' in df.columns:
+            df['Profit'] = df['Revenue'] - df['Cost']
 
         chart_type = request.form['chart_type']
         metric = request.form['metric']
 
-        # Group by Product for metrics
-        grouped = df.groupby('Product')[metric].sum()
+        if 'Product' in df.columns and metric in df.columns:
+            grouped = df.groupby('Product')[metric].sum().reset_index()
 
-        fig, ax = plt.subplots()
-        if chart_type == 'bar':
-            sns.barplot(x=grouped.index, y=grouped.values, ax=ax)
-        elif chart_type == 'line':
-            grouped.plot(kind='line', ax=ax)
-        elif chart_type == 'pie':
-            grouped.plot(kind='pie', ax=ax, autopct='%1.1f%%')
+            if chart_type == 'bar':
+                fig, ax = plt.subplots()
+                ax.bar(grouped['Product'], grouped[metric])
+                ax.set_title(f'{metric} by Product')
+                ax.set_xlabel('Product')
+                ax.set_ylabel(metric)
+                plt.xticks(rotation=45)
 
-        ax.set_title(f"{metric} by Product")
-        buf = io.BytesIO()
-        plt.savefig(buf, format="png")
-        buf.seek(0)
-        chart_url = base64.b64encode(buf.read()).decode('utf-8')
-        buf.close()
-        plt.close()
+            elif chart_type == 'line':
+                fig, ax = plt.subplots()
+                ax.plot(grouped['Product'], grouped[metric], marker='o')
+                ax.set_title(f'{metric} by Product')
+                ax.set_xlabel('Product')
+                ax.set_ylabel(metric)
+                plt.xticks(rotation=45)
 
-        charts.append((chart_type, metric, chart_url))
+            elif chart_type == 'pie':
+                fig, ax = plt.subplots()
+                ax.pie(grouped[metric], labels=grouped['Product'], autopct='%1.1f%%', startangle=140)
+                ax.set_title(f'{metric} Distribution by Product')
+
+            # Save image to buffer
+            buf = io.BytesIO()
+            plt.tight_layout()
+            plt.savefig(buf, format='png')
+            buf.seek(0)
+            chart_url = base64.b64encode(buf.read()).decode('utf-8')
+            plt.close(fig)
+
+            charts.append((chart_type, 'All Products', metric, chart_url))
 
     return render_template('dashboard.html', charts=charts)
+
 
 @app.route('/reset_csv', methods=['POST'])
 def reset_csv():
