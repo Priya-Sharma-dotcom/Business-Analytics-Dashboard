@@ -52,61 +52,51 @@ def logout():
 
 @app.route('/dashboard', methods=['GET', 'POST'])
 def dashboard():
-    if 'username' not in session:
-        return redirect(url_for('login'))
-
     charts = []
 
+    if 'csv_data' not in session and request.method == 'GET':
+        return render_template('dashboard.html', charts=None)
+
     if request.method == 'POST':
-        file = request.files['csv_file']
-        if file and file.filename.endswith('.csv'):
-            import time
-            filename = f"{int(time.time())}_{file.filename}"
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(filepath)
-            session['csv_file'] = filepath
+        if 'csv_file' in request.files:
+            file = request.files['csv_file']
+            df = pd.read_csv(file)
+            session['csv_data'] = df.to_json()  # Store JSON string in session
+        elif 'csv_data' in session:
+            df = pd.read_json(session['csv_data'])
+        else:
+            return redirect(url_for('dashboard'))
 
-            df = pd.read_csv(filepath)
+        chart_type = request.form['chart_type']
+        metric = request.form['metric']
 
-            # Add Profit column if missing
-            if 'Profit' not in df.columns and 'Revenue' in df.columns and 'Cost' in df.columns:
-                df['Profit'] = df['Revenue'] - df['Cost']
+        # Group by Product for metrics
+        grouped = df.groupby('Product')[metric].sum()
 
-            chart_type = request.form['chart_type']
-            metric = request.form['metric']
+        fig, ax = plt.subplots()
+        if chart_type == 'bar':
+            sns.barplot(x=grouped.index, y=grouped.values, ax=ax)
+        elif chart_type == 'line':
+            grouped.plot(kind='line', ax=ax)
+        elif chart_type == 'pie':
+            grouped.plot(kind='pie', ax=ax, autopct='%1.1f%%')
 
-            if 'Product' in df.columns and metric in df.columns:
-                grouped = df.groupby('Product')[metric].sum()
+        ax.set_title(f"{metric} by Product")
+        buf = io.BytesIO()
+        plt.savefig(buf, format="png")
+        buf.seek(0)
+        chart_url = base64.b64encode(buf.read()).decode('utf-8')
+        buf.close()
+        plt.close()
 
-                fig, ax = plt.subplots(figsize=(8, 5))
+        charts.append((chart_type, metric, chart_url))
 
-                if chart_type == 'bar':
-                    grouped.plot(kind='bar', ax=ax)
-                    ax.set_title(f'{metric} by Product')
-                    ax.set_ylabel(metric)
-                elif chart_type == 'line':
-                    grouped.plot(kind='line', marker='o', ax=ax)
-                    ax.set_title(f'{metric} by Product')
-                    ax.set_ylabel(metric)
-                elif chart_type == 'pie':
-                    grouped.plot(kind='pie', autopct='%1.1f%%', startangle=90, ax=ax)
-                    ax.set_ylabel("")
-                    ax.set_title(f'{metric} distribution by Product')
+    return render_template('dashboard.html', charts=charts)
 
-                buf = io.BytesIO()
-                plt.tight_layout()
-                plt.savefig(buf, format='png')
-                buf.seek(0)
-                chart_url = base64.b64encode(buf.read()).decode('utf-8')
-                plt.close(fig)
-
-                charts.append((chart_type, metric, chart_url))
-
-            return render_template('dashboard.html', charts=charts)
-
-    return render_template('dashboard.html')
-
-
+@app.route('/reset_csv', methods=['POST'])
+def reset_csv():
+    session.pop('csv_data', None)
+    return redirect(url_for('dashboard'))
 
 
 @app.route('/forecast')
