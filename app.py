@@ -82,13 +82,22 @@ def segment():
 
     df = pd.read_csv(session['csv_file'])
 
-    if 'CustomerID' in df.columns and 'Amount' in df.columns:
-        kmeans = KMeans(n_clusters=3, random_state=0).fit(df[['Amount']])
-        df['Segment'] = kmeans.labels_
-        segment_counts = df['Segment'].value_counts().to_dict()
+    if 'Customer Email' in df.columns and 'Revenue' in df.columns:
+        # Group by Customer Email and calculate total revenue per customer
+        customer_data = df.groupby('Customer Email')['Revenue'].sum().reset_index()
+        customer_data.rename(columns={'Revenue': 'TotalRevenue'}, inplace=True)
+
+        # Apply KMeans clustering on total revenue
+        kmeans = KMeans(n_clusters=3, random_state=0).fit(customer_data[['TotalRevenue']])
+        customer_data['Segment'] = kmeans.labels_
+
+        # Count number of customers in each segment
+        segment_counts = customer_data['Segment'].value_counts().to_dict()
+
         return render_template('segment.html', segments=segment_counts)
     else:
         return 'Required columns not found in CSV'
+
 
 if __name__ == '__main__':
     app.run(debug=True)
