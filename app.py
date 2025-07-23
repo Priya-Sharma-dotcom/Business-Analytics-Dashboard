@@ -1,123 +1,138 @@
-from flask import Flask, render_template, request, redirect, session, url_for
+from flask import Flask, render_template, request, redirect, url_for, session, flash
+import os
 import pandas as pd
+from werkzeug.utils import secure_filename
 import matplotlib.pyplot as plt
-import io
+from io import BytesIO
 import base64
-from sklearn.cluster import KMeans
-import numpy as np
+from fpdf import FPDF
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'  # Change this to something secure
-app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024  # 2MB max file size
+app.secret_key = 'your_secret_key'
 
-# ---------------- Utility Functions ----------------
+UPLOAD_FOLDER = 'uploads'
+ALLOWED_EXTENSIONS = {'csv'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-def generate_plot(df, x, y, title, xlabel, ylabel):
-    plt.figure(figsize=(10, 5))
-    plt.plot(df[x], df[y], marker='o')
-    plt.title(title)
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
-    plt.grid(True)
-    buf = io.BytesIO()
-    plt.savefig(buf, format='png')
-    buf.seek(0)
-    image_base64 = base64.b64encode(buf.read()).decode('utf-8')
-    plt.close()
-    return image_base64
+users = {}  # In-memory user store (can upgrade to CSV or DB)
 
-def calculate_kpis(df):
-    total_revenue = df['Revenue'].sum()
-    total_profit = df['Profit'].sum()
-    average_monthly_sales = df.groupby('Month')['Revenue'].sum().mean()
-    top_product = df.groupby('Product')['Revenue'].sum().idxmax()
-    return total_revenue, total_profit, average_monthly_sales, top_product
+# === Routes ===
 
-def segment_customers(df):
-    data = df.groupby('Customer')['Revenue'].sum().reset_index()
-    kmeans = KMeans(n_clusters=3, random_state=0).fit(data[['Revenue']])
-    data['Segment'] = kmeans.labels_
-    return data
+@app.route('/')
+def home():
+    if 'user' not in session:
+        return redirect(url_for('login'))
+    return render_template('index.html')
 
-def inventory_optimization(df):
-    inventory = df.groupby('Product')['Quantity Sold'].sum().reset_index()
-    inventory['Status'] = pd.cut(inventory['Quantity Sold'],
-                                  bins=[-1, 20, 100, float('inf')],
-                                  labels=['Slow-moving', 'Optimal', 'Fast-moving'])
-    return inventory
-
-# ---------------- Routes ----------------
-
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/login', methods=['GET', 'POST'])
 def login():
-    error = None
     if request.method == 'POST':
         email = request.form['email']
         password = request.form['password']
-        # Simple hardcoded check – replace with real authentication later
-        if email == 'admin@einfi.com' and password == '1234':
+        if email in users and users[email] == password:
             session['user'] = email
-            return redirect('/dashboard')
+            return redirect(url_for('home'))
         else:
-            error = "Invalid email or password"
-    return render_template('login.html', error=error)
+            flash('Invalid credentials')
+    return render_template('login.html')
 
-
-@app.route('/dashboard', methods=['GET', 'POST'])
-def dashboard():
-    if 'user' not in session:
-        return redirect('/')
-
-    chart = None
-    kpi = {}
-    segment_data = None
-    inventory_data = None
-    error = None
-
+@app.route('/register', methods=['GET', 'POST'])
+def register():
     if request.method == 'POST':
-        file = request.files['file']
-        if file:
-            try:
-                df = pd.read_csv(file)
-
-                # Validate columns
-                required_columns = {'Date', 'Product', 'Customer', 'Quantity Sold', 'Price'}
-                if not required_columns.issubset(df.columns):
-                    error = "CSV is missing one or more required columns."
-                    return render_template('index.html', chart=chart, kpi=kpi, segment_data=segment_data,
-                                           inventory_data=inventory_data, error=error)
-
-                df['Month'] = pd.to_datetime(df['Date']).dt.strftime('%B')
-                df['Revenue'] = df['Quantity Sold'] * df['Price']
-                df['Profit'] = df['Revenue'] * 0.2
-
-                chart = generate_plot(df.groupby('Month')['Revenue'].sum().reset_index(),
-                                      'Month', 'Revenue',
-                                      'Monthly Revenue', 'Month', 'Revenue')
-
-                total_revenue, total_profit, avg_monthly_sales, top_product = calculate_kpis(df)
-                kpi = {
-                    'Total Revenue': total_revenue,
-                    'Total Profit': total_profit,
-                    'Avg Monthly Sales': avg_monthly_sales,
-                    'Top Product': top_product
-                }
-
-                segment_data = segment_customers(df)
-                inventory_data = inventory_optimization(df)
-
-            except Exception as e:
-                error = f"Error processing file: {str(e)}"
-
-    return render_template('index.html', chart=chart, kpi=kpi, segment_data=segment_data,
-                           inventory_data=inventory_data, error=error)
+        email = request.form['email']
+        password = request.form['password']
+        if email in users:
+            flash('Email already registered')
+        else:
+            users[email] = password
+            flash('Registered successfully, please login')
+            return redirect(url_for('login'))
+    return render_template('register.html')
 
 @app.route('/logout')
 def logout():
     session.pop('user', None)
-    return redirect('/')
+    return redirect(url_for('login'))
 
-# ---------------- Run ----------------
+@app.route('/upload', methods=['GET', 'POST'])
+def upload_file():
+    if 'user' not in session:
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        file = request.files['file']
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)
+            session['csv_file'] = filepath
+            return redirect(url_for('analysis'))
+    return render_template('upload.html')
+
+@app.route('/analysis')
+def analysis():
+    if 'csv_file' not in session:
+        return redirect(url_for('upload_file'))
+
+    df = pd.read_csv(session['csv_file'])
+
+    total_sales = df['Sales'].sum()
+    total_profit = df['Profit'].sum()
+    total_quantity = df['Quantity'].sum()
+
+    fig, ax = plt.subplots()
+    df.groupby('Category')['Sales'].sum().plot(kind='bar', ax=ax)
+    ax.set_title('Sales by Category')
+    ax.set_ylabel('Sales')
+    buf = BytesIO()
+    fig.savefig(buf, format='png')
+    buf.seek(0)
+    chart_base64 = base64.b64encode(buf.read()).decode('utf-8')
+    plt.close()
+
+    return render_template('analysis.html',
+                           total_sales=total_sales,
+                           total_profit=total_profit,
+                           total_quantity=total_quantity,
+                           chart=chart_base64)
+
+@app.route('/generate_pdf')
+def generate_pdf():
+    if 'csv_file' not in session:
+        return redirect(url_for('upload_file'))
+
+    df = pd.read_csv(session['csv_file'])
+
+    total_sales = df['Sales'].sum()
+    total_profit = df['Profit'].sum()
+    total_quantity = df['Quantity'].sum()
+
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=14)
+    pdf.cell(200, 10, txt="Business Report Summary", ln=True, align='C')
+    pdf.ln(10)
+    pdf.set_font("Arial", size=12)
+    pdf.cell(200, 10, txt=f"Total Sales: {total_sales:.2f}", ln=True)
+    pdf.cell(200, 10, txt=f"Total Profit: {total_profit:.2f}", ln=True)
+    pdf.cell(200, 10, txt=f"Total Quantity Sold: {total_quantity}", ln=True)
+
+    # Save and serve the file
+    report_path = os.path.join('static', 'report.pdf')
+    pdf.output(report_path)
+
+    return redirect('/static/report.pdf')
+
+
+# === Utility ===
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# === Main ===
 
 if __name__ == '__main__':
+    if not os.path.exists(UPLOAD_FOLDER):
+        os.makedirs(UPLOAD_FOLDER)
     app.run(debug=True)
