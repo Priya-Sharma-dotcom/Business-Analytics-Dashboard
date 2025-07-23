@@ -1,85 +1,12 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>{% block title %}e-Infosoft{% endblock %}</title>
-    
-    <!-- Internal CSS -->
-    <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            font-family: Arial, sans-serif;
-            height: 100%;
-            overflow-x: hidden;
-        }
+{% extends "base.html" %}
+{% block title %}Login - e-Infosoft{% endblock %}
 
-        #bg-video {
-            position: fixed;
-            right: 0;
-            bottom: 0;
-            min-width: 100%;
-            min-height: 100%;
-            z-index: -1;
-        }
-
-        .overlay {
-            position: relative;
-            z-index: 1;
-            color: white;
-            padding: 20px;
-            background-color: rgba(0, 0, 0, 0.5); /* slightly dark background for readability */
-            min-height: 100vh;
-        }
-
-        nav {
-            display: flex;
-            gap: 15px;
-            background-color: rgba(0, 0, 0, 0.7);
-            padding: 10px 20px;
-            border-radius: 10px;
-        }
-
-        nav a {
-            color: #fff;
-            text-decoration: none;
-            font-weight: bold;
-            transition: color 0.3s;
-        }
-
-        nav a:hover {
-            color: #00ffff;
-        }
-
-        main {
-            margin-top: 30px;
-        }
-    </style>
-</head>
-<body>
-    <!-- Background Video -->
-    <video autoplay muted loop id="bg-video">
-        <source src="{{ url_for('static', filename='video.mp4') }}" type="video/mp4">
-    </video>
-
-    <!-- Overlay Content -->
-    <div class="overlay">
-        <nav>
-            <a href="{{ url_for('index') }}">Home</a>
-            {% if 'username' in session %}
-                <a href="{{ url_for('dashboard') }}">Dashboard</a>
-                <a href="{{ url_for('forecast') }}">Forecast</a>
-                <a href="{{ url_for('segment') }}">Segment</a>
-                <a href="{{ url_for('logout') }}">Logout</a>
-            {% else %}
-                <a href="{{ url_for('login') }}">Login</a>
-                <a href="{{ url_for('register') }}">Register</a>
-            {% endif %}
-        </nav>
-        
-        <main>
-            {% block content %}{% endblock %}
-        </main>
-    </div>
-</body>
-</html>
+{% block content %}
+<h2>Login to e-Infosoft</h2>
+<form method="POST">
+    <input type="email" name="email" required placeholder="Email">
+    <input type="password" name="password" required placeholder="Password">
+    <button type="submit">Login</button>
+</form>
+<p>Don't have an account? <a href="{{ url_for('register') }}">Register here</a>.</p>
+{% endblock %}
