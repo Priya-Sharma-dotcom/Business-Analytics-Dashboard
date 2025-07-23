@@ -1,7 +1,30 @@
 {% extends "base.html" %}
+
 {% block title %}Customer Segmentation - e-Infosoft{% endblock %}
+
 {% block content %}
 <h1>Customer Segmentation</h1>
-<p>Coming soon: Analyze customer groups using clustering algorithms.</p>
+
+<table border="1" cellpadding="10">
+    <thead>
+        <tr>
+            <th>Customer Email</th>
+            <th>Total Revenue (₹)</th>
+            <th>Segment</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in customer_data %}
+        <tr>
+            <td>{{ row['CustomerEmail'] }}</td>
+            <td>{{ "{:,.2f}".format(row['TotalRevenue']) }}</td>
+            <td>Segment {{ row['Segment'] }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<br>
 <a href="{{ url_for('dashboard') }}">⬅ Back to Dashboard</a>
 {% endblock %}
+
