@@ -53,7 +53,7 @@ def dashboard():
         return redirect(url_for('login'))
 
     if request.method == 'POST':
-        file = request.files['file']
+        file = request.files['csv_file']
         if file.filename.endswith('.csv'):
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
             file.save(filepath)
