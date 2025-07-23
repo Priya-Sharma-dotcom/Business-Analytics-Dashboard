@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Dashboard - e-Infosoft{% endblock %}
+
 {% block content %}
 <h1>Welcome, {{ session['username'] }}!</h1>
 
@@ -13,9 +14,9 @@
   {% endif %}
 {% endwith %}
 
-
-{% if session['csv_data'] is defined %}
+{% if session['csv_file'] is defined %}
     <p>✅ Using previously uploaded CSV</p>
+
     <form method="POST">
         <label>Select Chart Type:</label>
         <select name="chart_type">
@@ -36,6 +37,7 @@
     <form method="POST" action="{{ url_for('reset_csv') }}">
         <button type="submit">📂 Upload New CSV</button>
     </form>
+
 {% else %}
     <form method="POST" enctype="multipart/form-data">
         <label>Select CSV File:</label><br>
