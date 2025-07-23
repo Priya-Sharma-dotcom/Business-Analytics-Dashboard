@@ -68,7 +68,7 @@ def dashboard():
 
             df = pd.read_csv(filepath)
 
-            # Add Profit if missing
+            # Add Profit column if missing
             if 'Profit' not in df.columns and 'Revenue' in df.columns and 'Cost' in df.columns:
                 df['Profit'] = df['Revenue'] - df['Cost']
 
@@ -76,32 +76,36 @@ def dashboard():
             metric = request.form['metric']
 
             if 'Product' in df.columns and metric in df.columns:
-                grouped = df.groupby('Product')[metric].sum().reset_index()
+                grouped = df.groupby('Product')[metric].sum()
 
-                for _, row in grouped.iterrows():
-                    fig, ax = plt.subplots()
-                    product = row['Product']
-                    value = row[metric]
+                fig, ax = plt.subplots(figsize=(8, 5))
 
-                    if chart_type == 'bar':
-                        ax.bar([product], [value])
-                    elif chart_type == 'line':
-                        ax.plot([product], [value], marker='o')
-                    elif chart_type == 'pie':
-                        ax.pie([value, grouped[metric].sum() - value], labels=[product, 'Others'])
+                if chart_type == 'bar':
+                    grouped.plot(kind='bar', ax=ax)
+                    ax.set_title(f'{metric} by Product')
+                    ax.set_ylabel(metric)
+                elif chart_type == 'line':
+                    grouped.plot(kind='line', marker='o', ax=ax)
+                    ax.set_title(f'{metric} by Product')
+                    ax.set_ylabel(metric)
+                elif chart_type == 'pie':
+                    grouped.plot(kind='pie', autopct='%1.1f%%', startangle=90, ax=ax)
+                    ax.set_ylabel("")
+                    ax.set_title(f'{metric} distribution by Product')
 
-                    ax.set_title(f'{product} - {metric}')
-                    buf = io.BytesIO()
-                    plt.savefig(buf, format='png')
-                    buf.seek(0)
-                    chart_url = base64.b64encode(buf.read()).decode('utf-8')
-                    plt.close(fig)
+                buf = io.BytesIO()
+                plt.tight_layout()
+                plt.savefig(buf, format='png')
+                buf.seek(0)
+                chart_url = base64.b64encode(buf.read()).decode('utf-8')
+                plt.close(fig)
 
-                    charts.append((chart_type, product, metric, chart_url))
+                charts.append((chart_type, metric, chart_url))
 
             return render_template('dashboard.html', charts=charts)
 
     return render_template('dashboard.html')
+
 
 
 
