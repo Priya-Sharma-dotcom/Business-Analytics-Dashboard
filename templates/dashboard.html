@@ -1,32 +1,16 @@
-{% extends "base.html" %}
-{% block title %}Dashboard - e-Infosoft{% endblock %}
-{% block content %}
-<h1>Dashboard</h1>
-<p>Total Revenue: ₹{{ total_revenue }}</p>
-<p>Total Profit: ₹{{ total_profit }}</p>
-
-<h3>Chart Options</h3>
-<form method="GET" action="/dashboard">
-    <label>Chart Type:</label>
-    <select name="chart_type">
-        <option value="bar" {% if chart_type == 'bar' %}selected{% endif %}>Bar</option>
-        <option value="line" {% if chart_type == 'line' %}selected{% endif %}>Line</option>
-        <option value="pie" {% if chart_type == 'pie' %}selected{% endif %}>Pie</option>
-    </select>
-    <label>Metric:</label>
-    <select name="metric">
-        <option value="Revenue" {% if metric == 'Revenue' %}selected{% endif %}>Revenue</option>
-        <option value="Profit" {% if metric == 'Profit' %}selected{% endif %}>Profit</option>
-        <option value="Units Sold" {% if metric == 'Units Sold' %}selected{% endif %}>Units Sold</option>
-    </select>
-    <button type="submit">Update Chart</button>
-</form>
-
-<img src="data:image/png;base64,{{ chart }}" alt="Chart">
-<br><br>
-<a href="/forecast">📈 Forecast</a> |
-<a href="/segment">👥 Customer Segmentation</a> |
-<a href="/generate-pdf">📄 Download Report</a>
-<br><br>
-<a href="/logout">Logout</a>
-{% endblock %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard - e-Infosoft</title>
+</head>
+<body>
+    <h2>Welcome to the e-Infosoft Dashboard</h2>
+    <p>Choose an option below:</p>
+    <ul>
+        <li><a href="{{ url_for('upload') }}">Upload CSV</a></li>
+        <li><a href="{{ url_for('forecast') }}">Forecast</a></li>
+        <li><a href="{{ url_for('segment') }}">Customer Segmentation</a></li>
+        <li><a href="{{ url_for('logout') }}">Logout</a></li>
+    </ul>
+</body>
+</html>
