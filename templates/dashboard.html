@@ -60,7 +60,7 @@
 
 {% if charts %}
     <h2>Chart:</h2>
-    {% for chart_type, metric, chart_url in charts %}
+    {% for chart_type, product, metric, chart_url in charts %}
         <h3>{{ chart_type|capitalize }} Chart - {{ metric }}</h3>
         <img src="data:image/png;base64,{{ chart_url }}" alt="{{ chart_type }}">
     {% endfor %}
