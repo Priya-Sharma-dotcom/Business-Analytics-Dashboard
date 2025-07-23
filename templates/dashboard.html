@@ -3,28 +3,52 @@
 {% block content %}
 <h1>Welcome, {{ session['username'] }}!</h1>
 
-<form method="POST" enctype="multipart/form-data">
-    <label>Select CSV File:</label><br>
-    <input type="file" name="csv_file" accept=".csv" required><br><br>
+{% if session['csv_data'] is defined %}
+    <p>✅ Using previously uploaded CSV</p>
+    <form method="POST">
+        <label>Select Chart Type:</label>
+        <select name="chart_type">
+            <option value="bar">Bar</option>
+            <option value="line">Line</option>
+            <option value="pie">Pie</option>
+        </select><br><br>
 
-    <label>Select Chart Type:</label>
-    <select name="chart_type">
-        <option value="bar">Bar</option>
-        <option value="line">Line</option>
-        <option value="pie">Pie</option>
-    </select><br><br>
+        <label>Select Metric:</label>
+        <select name="metric">
+            <option value="Revenue">Revenue</option>
+            <option value="Profit">Profit</option>
+        </select><br><br>
 
-    <label>Select Metric:</label>
-    <select name="metric">
-        <option value="Revenue">Revenue</option>
-        <option value="Profit">Profit</option>
-    </select><br><br>
+        <input type="submit" value="Generate Charts">
+    </form>
 
-    <input type="submit" value="Generate Charts">
-</form>
+    <form method="POST" action="{{ url_for('reset_csv') }}">
+        <button type="submit">📂 Upload New CSV</button>
+    </form>
+{% else %}
+    <form method="POST" enctype="multipart/form-data">
+        <label>Select CSV File:</label><br>
+        <input type="file" name="csv_file" accept=".csv" required><br><br>
+
+        <label>Select Chart Type:</label>
+        <select name="chart_type">
+            <option value="bar">Bar</option>
+            <option value="line">Line</option>
+            <option value="pie">Pie</option>
+        </select><br><br>
+
+        <label>Select Metric:</label>
+        <select name="metric">
+            <option value="Revenue">Revenue</option>
+            <option value="Profit">Profit</option>
+        </select><br><br>
+
+        <input type="submit" value="Generate Charts">
+    </form>
+{% endif %}
 
 {% if charts %}
-    <h2>Charts:</h2>
+    <h2>Chart:</h2>
     {% for chart_type, metric, chart_url in charts %}
         <h3>{{ chart_type|capitalize }} Chart - {{ metric }}</h3>
         <img src="data:image/png;base64,{{ chart_url }}" alt="{{ chart_type }}">
