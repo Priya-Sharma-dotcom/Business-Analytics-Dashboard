@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Customer Segmentation - e-Infosoft{% endblock %}
+{% block content %}
+<h1>Customer Segmentation</h1>
+<p>KMeans Clustering based on Customer Spending</p>
+<img src="data:image/png;base64,{{ segment_chart }}" alt="Segmentation Chart">
+<br><br>
+<a href="/dashboard">⬅ Back to Dashboard</a>
+{% endblock %}
