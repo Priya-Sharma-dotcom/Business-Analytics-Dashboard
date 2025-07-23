@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2>Analysis Results</h2>
+  <p><strong>Uploaded File:</strong> {{ filename }}</p>
+
+  <h4>Summary:</h4>
+  <ul>
+    <li><strong>Total Revenue:</strong> ₹{{ total_revenue }}</li>
+    <li><strong>Total Profit:</strong> ₹{{ total_profit }}</li>
+  </ul>
+
+  <a class="btn btn-success" href="{{ url_for('download_pdf', filename=pdf_filename) }}">Download PDF Report</a>
+
+  {% if summary_table %}
+    <h4 class="mt-4">Data Preview:</h4>
+    {{ summary_table | safe }}
+  {% endif %}
+</div>
+{% endblock %}
