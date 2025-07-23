@@ -2,29 +2,25 @@ from flask import Flask, render_template, request, redirect, url_for, session
 import os
 import pandas as pd
 import matplotlib.pyplot as plt
-import uuid
+import seaborn as sns
+import numpy as np
+from fpdf import FPDF
+from sklearn.cluster import KMeans
+from datetime import datetime
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'
+app.secret_key = 'supersecretkey'
 
-# Save directly in static folder
 UPLOAD_FOLDER = 'static'
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-ALLOWED_EXTENSIONS = {'csv'}
 
-# Dummy user database
+# In-memory user store for simplicity
 users = {}
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-# Route: Home Page
 @app.route('/')
 def index():
     return render_template('index.html')
 
-# Route: Register
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
@@ -34,7 +30,6 @@ def register():
         return redirect(url_for('login'))
     return render_template('register.html')
 
-# Route: Login
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -47,60 +42,53 @@ def login():
             return 'Invalid credentials'
     return render_template('login.html')
 
-# Route: Logout
 @app.route('/logout')
 def logout():
     session.pop('username', None)
     return redirect(url_for('index'))
 
-# Route: Dashboard & Upload
 @app.route('/dashboard', methods=['GET', 'POST'])
 def dashboard():
     if 'username' not in session:
         return redirect(url_for('login'))
 
-    charts = None
     if request.method == 'POST':
-        file = request.files['csv_file']
-        chart_type = request.form.get('chart_type')
-        metric = request.form.get('metric')
-
-        if file and allowed_file(file.filename):
-            filename = str(uuid.uuid4()) + ".csv"
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file = request.files['file']
+        if file.filename.endswith('.csv'):
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
             file.save(filepath)
+            session['csv_file'] = filepath
+            return render_template('dashboard.html', uploaded=True)
+    return render_template('dashboard.html')
 
-            df = pd.read_csv(filepath)
-            charts = generate_charts(df, chart_type, metric)
-        else:
-            return "Please upload a valid CSV file."
+@app.route('/forecast')
+def forecast():
+    if 'csv_file' not in session:
+        return redirect(url_for('dashboard'))
 
-    return render_template('dashboard.html', charts=charts)
+    df = pd.read_csv(session['csv_file'])
 
-# Generate charts and return filenames
-def generate_charts(df, chart_type, metric):
-    if metric not in df.columns:
-        return []
-
-    chart_filename = f"chart_{uuid.uuid4()}.png"
-    chart_path = os.path.join(app.config['UPLOAD_FOLDER'], chart_filename)
-
-    plt.figure()
-    if chart_type == 'bar':
-        df[metric].value_counts().plot(kind='bar')
-    elif chart_type == 'line':
-        df[metric].plot(kind='line')
-    elif chart_type == 'pie':
-        df[metric].value_counts().plot(kind='pie', autopct='%1.1f%%')
+    # Simple forecast (average revenue projection)
+    if 'Revenue' in df.columns:
+        forecast = df['Revenue'].mean() * 1.1
+        return render_template('forecast.html', forecast=forecast)
     else:
-        return []
+        return 'Revenue column not found in CSV'
 
-    plt.title(f"{chart_type.capitalize()} Chart of {metric}")
-    plt.tight_layout()
-    plt.savefig(chart_path)
-    plt.close()
+@app.route('/segment')
+def segment():
+    if 'csv_file' not in session:
+        return redirect(url_for('dashboard'))
 
-    return [chart_filename]
+    df = pd.read_csv(session['csv_file'])
+
+    if 'CustomerID' in df.columns and 'Amount' in df.columns:
+        kmeans = KMeans(n_clusters=3, random_state=0).fit(df[['Amount']])
+        df['Segment'] = kmeans.labels_
+        segment_counts = df['Segment'].value_counts().to_dict()
+        return render_template('segment.html', segments=segment_counts)
+    else:
+        return 'Required columns not found in CSV'
 
 if __name__ == '__main__':
     app.run(debug=True)
