@@ -1,19 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Login - e-Infosoft{% endblock %}
 {% block content %}
-<h2>Login</h2>
-<form method="POST" action="{{ url_for('login') }}">
-    <input type="email" name="email" placeholder="Email" required><br><br>
-    <input type="password" name="password" placeholder="Password" required><br><br>
-    <button type="submit">Login</button>
+<h1>Login to e-Infosoft</h1>
+<form method="POST">
+    <label>Email:</label><br>
+    <input type="email" name="email" required><br><br>
+    <label>Password:</label><br>
+    <input type="password" name="password" required><br><br>
+    <input type="submit" value="Login" class="button">
 </form>
-{% with messages = get_flashed_messages() %}
-  {% if messages %}
-    <ul style="color: red;">
-      {% for message in messages %}
-        <li>{{ message }}</li>
-      {% endfor %}
-    </ul>
-  {% endif %}
-{% endwith %}
+<p>Don't have an account? <a href="/register">Register here</a></p>
 {% endblock %}
