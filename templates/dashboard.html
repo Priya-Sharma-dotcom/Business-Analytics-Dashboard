@@ -1,16 +1,79 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
     <title>Dashboard - e-Infosoft</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script>
+        function toggleMode() {
+            document.body.classList.toggle('dark-mode');
+        }
+    </script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: Arial, sans-serif;
+        }
+        .video-bg {
+            position: fixed;
+            right: 0;
+            bottom: 0;
+            min-width: 100%; 
+            min-height: 100%;
+            z-index: -1;
+            object-fit: cover;
+        }
+        .content {
+            position: relative;
+            z-index: 1;
+            padding: 20px;
+            color: #fff;
+        }
+        .dark-mode {
+            background-color: #111;
+            color: #eee;
+        }
+        .toggle-btn {
+            float: right;
+            margin: 10px;
+        }
+        img.chart {
+            max-width: 600px;
+            margin-bottom: 20px;
+            border: 2px solid #fff;
+            border-radius: 10px;
+        }
+    </style>
 </head>
 <body>
-    <h2>Welcome to the e-Infosoft Dashboard</h2>
-    <p>Choose an option below:</p>
-    <ul>
-        <li><a href="{{ url_for('upload') }}">Upload CSV</a></li>
-        <li><a href="{{ url_for('forecast') }}">Forecast</a></li>
-        <li><a href="{{ url_for('segment') }}">Customer Segmentation</a></li>
-        <li><a href="{{ url_for('logout') }}">Logout</a></li>
-    </ul>
+    <video autoplay muted loop class="video-bg">
+        <source src="{{ url_for('static', filename='background.mp4') }}" type="video/mp4">
+    </video>
+
+    <div class="content">
+        <button onclick="toggleMode()" class="toggle-btn">Toggle Dark/Light Mode</button>
+        <h1>Welcome to the e-Infosoft Dashboard</h1>
+
+        {% if 'username' in session %}
+            <p>Hello, {{ session['username'] }}!</p>
+            <a href="{{ url_for('upload') }}">Upload New CSV</a> |
+            <a href="{{ url_for('forecast') }}">Forecast</a> |
+            <a href="{{ url_for('segment') }}">Customer Segmentation</a> |
+            <a href="{{ url_for('logout') }}">Logout</a>
+        {% else %}
+            <a href="{{ url_for('login') }}">Login</a> |
+            <a href="{{ url_for('register') }}">Register</a>
+        {% endif %}
+
+        {% if charts %}
+            <h2>Sales Analysis Charts</h2>
+            {% for chart in charts %}
+                <h4>{{ chart[0] }} Chart for {{ chart[1] }} - {{ chart[2] }}</h4>
+                <img class="chart" src="data:image/png;base64,{{ chart[3] }}" alt="Chart"><br>
+            {% endfor %}
+        {% endif %}
+    </div>
 </body>
 </html>
