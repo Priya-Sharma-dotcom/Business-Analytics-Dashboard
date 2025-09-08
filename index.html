@@ -1,26 +1,74 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Welcome - e-Infosoft</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      margin-top: 100px;
-      background: #f4f4f4;
-    }
-    h1 {
-      color: #2c3e50;
-    }
-    p {
-      color: #555;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <title>Welcome to E-Infosoft</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            height: 100%;
+            overflow-x: hidden;
+        }
+        #bg-video {
+            position: fixed;
+            right: 0;
+            bottom: 0;
+            min-width: 100%;
+            min-height: 100%;
+            z-index: -1;
+        }
+        .overlay {
+            position: relative;
+            z-index: 1;
+            color: white;
+            padding: 20px;
+            background-color: rgba(0, 0, 0, 0.5);
+            min-height: 100vh;
+        }
+        nav {
+            display: flex;
+            gap: 15px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 10px;
+        }
+        nav a {
+            color: #fff;
+            text-decoration: none;
+            font-weight: bold;
+            transition: color 0.3s;
+        }
+        nav a:hover {
+            color: #00ffff;
+        }
+        main {
+            margin-top: 30px;
+        }
+    </style>
 </head>
 <body>
-  <h1>Welcome to e-Infosoft</h1>
-  <p>Your smart business analytics platform for electronics showrooms.</p>
+    <!-- Background Video -->
+    <video autoplay muted loop id="bg-video">
+        <source src="static/video.mp4" type="video/mp4">
+    </video>
+
+    <!-- Overlay Content -->
+    <div class="overlay">
+        <nav>
+            <a href="index.html">Home</a>
+            <a href="dashboard.html">Dashboard</a>
+            <a href="forecast.html">Forecast</a>
+            <a href="segment.html">Segment</a>
+            <a href="login.html">Login</a>
+            <a href="register.html">Register</a>
+        </nav>
+        
+        <main>
+            <h1>Welcome to e-Infosoft</h1>
+            <p>Your smart business analytics platform for electronics showrooms.</p>
+        </main>
+    </div>
 </body>
 </html>
