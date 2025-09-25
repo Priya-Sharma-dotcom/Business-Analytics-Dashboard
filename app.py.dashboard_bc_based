@@ -1,0 +1,252 @@
+from flask import Flask, render_template, request, redirect, url_for, session, flash
+import os
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+from fpdf import FPDF
+from sklearn.cluster import KMeans
+from datetime import datetime
+import io
+import base64
+import time
+import hashlib
+import json
+
+app = Flask(__name__)
+app.secret_key = 'supersecretkey'
+
+UPLOAD_FOLDER = 'static'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# In-memory user store for simplicity
+users = {}
+
+# =========================
+# Blockchain Classes/Functions
+# =========================
+class Block:
+    def __init__(self, data, previous_hash):
+        self.timestamp = str(datetime.now())
+        self.data = data  # can store filename, uploader info, etc.
+        self.previous_hash = previous_hash
+        self.hash = self.calculate_hash()
+
+    def calculate_hash(self):
+        block_string = json.dumps({
+            'timestamp': self.timestamp,
+            'data': self.data,
+            'previous_hash': self.previous_hash
+        }, sort_keys=True).encode()
+        return hashlib.sha256(block_string).hexdigest()
+
+CHAIN_FILE = 'chain.json'
+
+def load_chain():
+    try:
+        with open(CHAIN_FILE, 'r') as f:
+            chain_data = json.load(f)
+            chain = []
+            for block_dict in chain_data:
+                block = Block(block_dict['data'], block_dict['previous_hash'])
+                block.timestamp = block_dict['timestamp']
+                block.hash = block_dict['hash']
+                chain.append(block)
+            return chain
+    except FileNotFoundError:
+        return []
+
+def save_chain(chain):
+    with open(CHAIN_FILE, 'w') as f:
+        json.dump([block.__dict__ for block in chain], f)
+
+# Initialize blockchain
+blockchain = load_chain()
+if not blockchain:
+    genesis_block = Block("Genesis Block", "0")
+    blockchain.append(genesis_block)
+    save_chain(blockchain)
+
+# =========================
+# Flask Routes
+# =========================
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        email = request.form['email']
+        password = request.form['password']
+        users[email] = password
+        return redirect(url_for('login'))
+    return render_template('register.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        email = request.form['email']
+        password = request.form['password']
+        if users.get(email) == password:
+            session['username'] = email
+            return redirect(url_for('dashboard'))
+        else:
+            return 'Invalid credentials'
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.pop('username', None)
+    return redirect(url_for('index'))
+
+@app.route('/dashboard', methods=['GET', 'POST'])
+def dashboard():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+
+    charts = []
+
+    if request.method == 'POST':
+        # Handle CSV Upload
+        if 'csv_file' in request.files:
+            file = request.files['csv_file']
+            if file and file.filename.endswith('.csv'):
+                filename = f"{int(time.time())}_{file.filename}"
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                file.save(filepath)
+                session['csv_file'] = filepath
+
+                # ===== Blockchain: Add new block for this upload =====
+                block_data = {
+                    'filename': filename,
+                    'uploaded_by': session['username'],
+                    'filepath': filepath
+                }
+                previous_hash = blockchain[-1].hash
+                new_block = Block(block_data, previous_hash)
+                blockchain.append(new_block)
+                save_chain(blockchain)
+                flash(f'✅ CSV uploaded and added to blockchain. Block hash: {new_block.hash}', 'success')
+            else:
+                flash('❌ Please upload a valid .csv file.', 'error')
+            return redirect(url_for('dashboard'))
+
+        # Handle Chart Generation
+        if 'chart_type' in request.form and 'metric' in request.form:
+            if 'csv_file' not in session:
+                flash("❌ Please upload a CSV file first.", 'error')
+                return redirect(url_for('dashboard'))
+
+            filepath = session['csv_file']
+            try:
+                df = pd.read_csv(filepath)
+
+                if 'Profit' not in df.columns and 'Revenue' in df.columns and 'Cost' in df.columns:
+                    df['Profit'] = df['Revenue'] - df['Cost']
+
+                chart_type = request.form['chart_type']
+                metric = request.form['metric']
+
+                if 'Product' in df.columns and metric in df.columns:
+                    grouped = df.groupby('Product')[metric].sum().reset_index()
+
+                    fig, ax = plt.subplots()
+                    if chart_type == 'bar':
+                        ax.bar(grouped['Product'], grouped[metric])
+                        ax.set_title(f'{metric} by Product')
+                    elif chart_type == 'line':
+                        ax.plot(grouped['Product'], grouped[metric], marker='o')
+                        ax.set_title(f'{metric} by Product')
+                    elif chart_type == 'pie':
+                        ax.pie(grouped[metric], labels=grouped['Product'], autopct='%1.1f%%')
+                        ax.set_title(f'{metric} Distribution')
+
+                    ax.set_xlabel('Product') if chart_type != 'pie' else None
+                    ax.set_ylabel(metric) if chart_type != 'pie' else None
+                    plt.xticks(rotation=45)
+                    plt.tight_layout()
+
+                    buf = io.BytesIO()
+                    plt.savefig(buf, format='png')
+                    buf.seek(0)
+                    chart_url = base64.b64encode(buf.read()).decode('utf-8')
+                    plt.close(fig)
+
+                    charts.append((chart_type, 'All Products', metric, chart_url))
+                else:
+                    flash("❌ Required columns missing in CSV.", 'error')
+            except Exception as e:
+                flash(f"❌ Error processing CSV: {str(e)}", 'error')
+
+    return render_template('dashboard.html', charts=charts)
+
+@app.route('/reset_csv', methods=['POST'])
+def reset_csv():
+    session.pop('csv_file', None)
+    flash("🗂️ CSV reset. Please upload a new file.", 'info')
+    return redirect(url_for('dashboard'))
+
+@app.route('/forecast')
+def forecast():
+    if 'csv_file' not in session:
+        return redirect(url_for('dashboard'))
+
+    df = pd.read_csv(session['csv_file'])
+
+    if 'Date' in df.columns and 'Revenue' in df.columns:
+        df['Date'] = pd.to_datetime(df['Date'])
+        daily_revenue = df.groupby('Date')['Revenue'].sum().reset_index()
+        daily_revenue['Forecast'] = daily_revenue['Revenue'].rolling(window=3, min_periods=1).mean()
+
+        plt.figure(figsize=(10, 5))
+        sns.lineplot(data=daily_revenue, x='Date', y='Revenue', label='Actual Revenue')
+        sns.lineplot(data=daily_revenue, x='Date', y='Forecast', label='Forecast (3-day MA)')
+        plt.title('Revenue Forecast')
+        plt.xlabel('Date')
+        plt.ylabel('Revenue')
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+
+        img = io.BytesIO()
+        plt.savefig(img, format='png')
+        plt.close()
+        img.seek(0)
+        forecast_plot = base64.b64encode(img.read()).decode('utf8')
+
+        return render_template('forecast.html', forecast_plot=forecast_plot)
+    else:
+        return 'Required columns "Date" and "Revenue" not found in CSV'
+
+@app.route('/segment')
+def segment():
+    if 'csv_file' not in session:
+        return redirect(url_for('dashboard'))
+
+    df = pd.read_csv(session['csv_file'])
+
+    if 'Customer Email' in df.columns and 'Revenue' in df.columns:
+        customer_data = df.groupby('Customer Email')['Revenue'].sum().reset_index()
+        customer_data.rename(columns={'Customer Email': 'CustomerEmail', 'Revenue': 'TotalRevenue'}, inplace=True)
+
+        kmeans = KMeans(n_clusters=3, random_state=0)
+        customer_data['Segment'] = kmeans.fit_predict(customer_data[['TotalRevenue']])
+        data_dict = customer_data.to_dict(orient='records')
+
+        return render_template('segment.html', customer_data=data_dict)
+    else:
+        return 'Required columns "Customer Email" and "Revenue" not found in CSV'
+
+# Optional: view blockchain
+@app.route('/blockchain')
+def view_blockchain():
+    display_chain = [{
+        'timestamp': blk.timestamp,
+        'data': blk.data,
+        'hash': blk.hash,
+        'previous_hash': blk.previous_hash
+    } for blk in blockchain]
+    return render_template('blockchain.html', chain=display_chain)
+
+if __name__ == '__main__':
+    app.run(debug=True)
