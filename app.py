@@ -16,7 +16,7 @@ app = Flask(__name__)                             //Flask App starts
 app.secret_key = 'supersecretkey'                 //required to sign the session cookies and flash messages. Note: Hardcoding 'supersecretkey' is insecure for production.
 
 UPLOAD_FOLDER = 'static'                             //Defines where uploaded files get saved.
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER          //In Flask, app.config is like a dictionary (key-value store) that holds configuration settings for your app.
 
 # In-memory user store for simplicity
 users = {}                                          //A Python dictionary storing email: password. This is only suitable for demos. Passwords are stored in plaintext — insecure.Instead store hashes
@@ -37,7 +37,7 @@ def register():
 @app.route('/login', methods=['GET', 'POST'])          //POST: checks if password matches the stored one and sets session['username'] to mark user logged in.  GET: shows login form.
 def login():
     if request.method == 'POST':
-        email = request.form['email']
+        email = request.form['email']                  //read email and password from form
         password = request.form['password']
         if users.get(email) == password:
             session['username'] = email
@@ -61,10 +61,10 @@ def dashboard():
     if request.method == 'POST':                                                  //If form POST includes a file named csv_file, it:Checks filename ends with .csv.Builds filename by prefixing a timestamp to avoid collisions.Saves file to static/ folder and stores session['csv_file'] = filepath.flash a success or error message.
         # Handle CSV Upload
         if 'csv_file' in request.files:
-            file = request.files['csv_file']
+            file = request.files['csv_file']                                      //Get uploaded files
             if file and file.filename.endswith('.csv'):
                 filename = f"{int(time.time())}_{file.filename}"
-                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)           //os.path.join(...) → safely joins folder + filename into a full path, like:uploads/picture.png
                 file.save(filepath)
                 session['csv_file'] = filepath
                 flash('✅ CSV uploaded successfully.', 'success')
@@ -80,13 +80,19 @@ def dashboard():
 
             filepath = session['csv_file']
             try:
-                df = pd.read_csv(filepath)
+                df = pd.read_csv(filepath)                                             //Reads CSV into a pandas DataFrame df.
 
                 if 'Profit' not in df.columns and 'Revenue' in df.columns and 'Cost' in df.columns:
                     df['Profit'] = df['Revenue'] - df['Cost']
 
                 chart_type = request.form['chart_type']
                 metric = request.form['metric']
+
+
+                
+//Requires Product column and the chosen metric column in CSV.
+//Groups data by Product and sums the metric (so each product has a single number).
+//Creates a matplotlib figure:bar, line, or pie depending on chart_type.
 
                 if 'Product' in df.columns and metric in df.columns:
                     grouped = df.groupby('Product')[metric].sum().reset_index()
@@ -107,13 +113,13 @@ def dashboard():
                     plt.xticks(rotation=45)
                     plt.tight_layout()
 
-                    buf = io.BytesIO()
+                    buf = io.BytesIO()                                  //Converts the figure to PNG in-memory using io.BytesIO, base64-encodes it so it can be embedded into HTML as a data:image/png;base64,... string.
                     plt.savefig(buf, format='png')
                     buf.seek(0)
                     chart_url = base64.b64encode(buf.read()).decode('utf-8')
                     plt.close(fig)
 
-                    charts.append((chart_type, 'All Products', metric, chart_url))
+                    charts.append((chart_type, 'All Products', metric, chart_url))      //Closes the figure and appends (chart_type, 'All Products', metric, chart_url) to charts list which the template will display.
                 else:
                     flash("❌ Required columns missing in CSV.", 'error')
             except Exception as e:
@@ -124,29 +130,35 @@ def dashboard():
 @app.route('/reset_csv', methods=['POST'])
 def reset_csv():
     session.pop('csv_file', None)
-    flash("🗂️ CSV reset. Please upload a new file.", 'info')
+    flash("🗂️ CSV reset. Please upload a new file.", 'info')       //Removes the saved CSV from the session (so user can upload a new one)
     return redirect(url_for('dashboard'))
 
 
 
 @app.route('/forecast')
 def forecast():
-    if 'csv_file' not in session:
+    if 'csv_file' not in session:                                  //Ensures a CSV is uploaded.
         return redirect(url_for('dashboard'))
 
     df = pd.read_csv(session['csv_file'])
 
-    if 'Date' in df.columns and 'Revenue' in df.columns:
+    if 'Date' in df.columns and 'Revenue' in df.columns:                   //Reads CSV and checks for Date and Revenue.
         # Step 1: Convert Date to datetime
         df['Date'] = pd.to_datetime(df['Date'])
 
         # Step 2: Group by Date and sum Revenue
-        daily_revenue = df.groupby('Date')['Revenue'].sum().reset_index()
+        daily_revenue = df.groupby('Date')['Revenue'].sum().reset_index()     //Aggregates revenue per date (groupby('Date').sum()).
 
         # Step 3: Forecast using moving average
+//daily_revenue['Revenue'] → selects the column of daily revenue.
+//.rolling(window=3, min_periods=1) → creates a moving window of 3 rows.
+//For each day, it looks at the current day and the previous 2 days.
+//.mean() → calculates the average for that window.
+//daily_revenue['Forecast'] = ... → stores it in a new column called Forecast.
+
         daily_revenue['Forecast'] = daily_revenue['Revenue'].rolling(window=3, min_periods=1).mean()
 
-        # Step 4: Plot
+        # Step 4: Plots actual vs forecast using seaborn line plots, saves to base64 and renders forecast.html with the image.
         plt.figure(figsize=(10, 5))
         sns.lineplot(data=daily_revenue, x='Date', y='Revenue', label='Actual Revenue')
         sns.lineplot(data=daily_revenue, x='Date', y='Forecast', label='Forecast (3-day MA)')
@@ -172,14 +184,18 @@ def segment():
     if 'csv_file' not in session:
         return redirect(url_for('dashboard'))
 
-    df = pd.read_csv(session['csv_file'])
+    df = pd.read_csv(session['csv_file'])             //df now contains all rows and columns from the uploaded file.
 
     if 'Customer Email' in df.columns and 'Revenue' in df.columns:
         # Step 1: Group revenue per customer
-        customer_data = df.groupby('Customer Email')['Revenue'].sum().reset_index()
+        customer_data = df.groupby('Customer Email')['Revenue'].sum().reset_index()                                   //Aggregates total revenue per customer.combine all rows for the same customer.
         customer_data.rename(columns={'Customer Email': 'CustomerEmail', 'Revenue': 'TotalRevenue'}, inplace=True)
 
         # Step 2: KMeans clustering
+        //KMeans is a machine learning algorithm that groups data into clusters.
+//Here,it groups customers into 3 segments based on TotalRevenue.
+//Each customer is assigned a Segment number (0, 1, or 2) depending on their spending.  
+            
         kmeans = KMeans(n_clusters=3, random_state=0)
         customer_data['Segment'] = kmeans.fit_predict(customer_data[['TotalRevenue']])
 
@@ -192,5 +208,6 @@ def segment():
 
 
 
-if __name__ == '__main__':
-    app.run(debug=True)
+if __name__ == '__main__':         //Only run the Flask server if this script is executed directly.Start the server in debug mode so you can see errors and auto-reload changes.You can now open a browser at http://127.0.0.1:5000/ to see your web app.
+    app.run(debug=True)          //Runs Flask dev server in debug mode (auto reload and detailed errors).
+                                //Important: debug=True should be turned off in production since it can expose code and give remote users an interactive debugger.
