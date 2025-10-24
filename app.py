@@ -1,31 +1,31 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
-import os
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-import numpy as np
-from fpdf import FPDF
-from sklearn.cluster import KMeans
+import os                                           //filesystem paths
+import pandas as pd                                 //CSV reading
+import matplotlib.pyplot as plt      
+import seaborn as sns                              //plotting
+import numpy as np                                 //numerical library
+from fpdf import FPDF                              //generating pdf
+from sklearn.cluster import KMeans                  
 from datetime import datetime
-import io
-import base64
+import io                                         //in-memory binary streams (used when creating images)
+import base64                                     //coverts image to text strings for embedding in HTML
 import time
 
 
-app = Flask(__name__)
-app.secret_key = 'supersecretkey'
+app = Flask(__name__)                             //Flask App starts
+app.secret_key = 'supersecretkey'                 //required to sign the session cookies and flash messages. Note: Hardcoding 'supersecretkey' is insecure for production.
 
-UPLOAD_FOLDER = 'static'
+UPLOAD_FOLDER = 'static'                             //Defines where uploaded files get saved.
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # In-memory user store for simplicity
-users = {}
+users = {}                                          //A Python dictionary storing email: password. This is only suitable for demos. Passwords are stored in plaintext — insecure.Instead store hashes
 
-@app.route('/')
+@app.route('/')                                      //When a visitor hits /, Flask renders index.html. (By convention Template files must be in a templates/ folder.)
 def index():
     return render_template('index.html')
 
-@app.route('/register', methods=['GET', 'POST'])
+@app.route('/register', methods=['GET', 'POST'])       //GET: show registration page.POST: read email and password from form, store them in users, then redirect to login.
 def register():
     if request.method == 'POST':
         email = request.form['email']
@@ -34,7 +34,7 @@ def register():
         return redirect(url_for('login'))
     return render_template('register.html')
 
-@app.route('/login', methods=['GET', 'POST'])
+@app.route('/login', methods=['GET', 'POST'])          //POST: checks if password matches the stored one and sets session['username'] to mark user logged in.  GET: shows login form.
 def login():
     if request.method == 'POST':
         email = request.form['email']
@@ -46,19 +46,19 @@ def login():
             return 'Invalid credentials'
     return render_template('login.html')
 
-@app.route('/logout')
+@app.route('/logout')                                                //Removes username from session, logs user out, and redirects to home.
 def logout():
     session.pop('username', None)
     return redirect(url_for('index'))
 
-@app.route('/dashboard', methods=['GET', 'POST'])
+@app.route('/dashboard', methods=['GET', 'POST'])                               
 def dashboard():
-    if 'username' not in session:
+    if 'username' not in session:                                        //If user not logged in → redirect to login.
         return redirect(url_for('login'))
 
-    charts = []
+    charts = []                                                        //is used to collect chart info to pass to template.
 
-    if request.method == 'POST':
+    if request.method == 'POST':                                                  //If form POST includes a file named csv_file, it:Checks filename ends with .csv.Builds filename by prefixing a timestamp to avoid collisions.Saves file to static/ folder and stores session['csv_file'] = filepath.flash a success or error message.
         # Handle CSV Upload
         if 'csv_file' in request.files:
             file = request.files['csv_file']
@@ -69,7 +69,7 @@ def dashboard():
                 session['csv_file'] = filepath
                 flash('✅ CSV uploaded successfully.', 'success')
             else:
-                flash('❌ Please upload a valid .csv file.', 'error')
+                flash('❌ Please upload a valid .csv file.', 'error')                      //Redirect back to dashboard after upload (so page refresh doesn’t re-post).
             return redirect(url_for('dashboard'))
 
         # Handle Chart Generation
