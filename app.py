@@ -40,7 +40,7 @@ def login():
         email = request.form['email']                  //read email and password from form
         password = request.form['password']
         if users.get(email) == password:
-            session['username'] = email
+            session['username'] = email                  //Flask stores this session in the user’s browser as a cookie.The cookie is encrypted/signed using app.secret_key so the user can’t modify it. When the user sends it back, Flask verifies it using the secret key.
             return redirect(url_for('dashboard'))
         else:
             return 'Invalid credentials'
